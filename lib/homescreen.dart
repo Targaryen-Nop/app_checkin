@@ -2,9 +2,11 @@ import 'package:checkin_app/calendarscreen.dart';
 import 'package:checkin_app/checkinscreen.dart';
 import 'package:checkin_app/model/user.dart';
 import 'package:checkin_app/profilescreen.dart';
+import 'package:checkin_app/services/location_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreeen extends StatefulWidget {
   const HomeScreeen({super.key});
@@ -14,38 +16,49 @@ class HomeScreeen extends StatefulWidget {
 }
 
 class _HomeScreeenState extends State<HomeScreeen> {
+  late SharedPreferences sharedPreferences;
+  @override
+  void initState() {
+    super.initState();
+    _startLocationService();
+    getId();
+  }
+
+  void _startLocationService() async {
+    LocationService().initialize();
+    LocationService().getLatetude().then((value) {
+      setState(() {
+        Users.lat = value!;
+      });
+      LocationService().getLongtetude().then((value) {
+        setState(() {
+          Users.long = value!;
+        });
+      });
+    });
+  }
+
+  void getId() async {
+    QuerySnapshot snap = await FirebaseFirestore.instance
+        .collection("Employee")
+        .where('username', isEqualTo: Users.username)
+        .get();
+
+    setState(() {
+      Users.id = snap.docs[0].id;
+    });
+  }
+
   double screenHeight = 0;
   double screenWidth = 0;
   Color primary = Color.fromRGBO(12, 45, 92, 1);
   int currerntIndex = 1;
-
-  String id = '';
 
   List<IconData> navigationIcons = [
     FontAwesomeIcons.calendarDay,
     FontAwesomeIcons.check,
     FontAwesomeIcons.user,
   ];
-
-  @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
-
-    getId();
-  }
-
-  void getId() async{
-    QuerySnapshot snap = await FirebaseFirestore.instance
-    .collection("Employee")
-    .where('username',isEqualTo: Users.username)
-    .get();
- 
-
-    setState(() {
-      Users.id = snap.docs[0].id;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -108,10 +121,9 @@ class _HomeScreeenState extends State<HomeScreeen> {
                                     margin: const EdgeInsets.only(top: 6),
                                     height: 3,
                                     width: 22,
-                          
                                     decoration: BoxDecoration(
-                                      borderRadius:
-                                          const BorderRadius.all(Radius.circular(40)),
+                                      borderRadius: const BorderRadius.all(
+                                          Radius.circular(40)),
                                       color: primary,
                                     ),
                                   )

@@ -6,6 +6,7 @@ import 'package:checkin_app/model/user.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
+import 'package:month_year_picker/month_year_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
@@ -24,8 +25,9 @@ class MyApp extends StatelessWidget {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
       home: KeyboardVisibilityProvider(
-            child: AuthCheck(),
-          ),
+        child: AuthCheck(),
+      ),
+      localizationsDelegates: [MonthYearPickerLocalizations.delegate],
     );
   }
 }
@@ -38,7 +40,6 @@ class AuthCheck extends StatefulWidget {
 }
 
 class _AuthCheckState extends State<AuthCheck> {
-
   bool userAvailable = false;
   late SharedPreferences sharedPreferences;
 
