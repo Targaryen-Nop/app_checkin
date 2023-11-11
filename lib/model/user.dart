@@ -7,8 +7,9 @@ class Users {
   static String age = "";
   static String address = "";
   static String department = "";
+  static String profilePiclink = "";
   static bool conEdit = true;
   static String phone = "";
-  static double lat =  0;
+  static double lat = 0;
   static double long = 0;
 }

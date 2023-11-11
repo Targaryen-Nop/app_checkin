@@ -1,6 +1,12 @@
+import 'dart:io';
 import 'package:checkin_app/model/user.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+
+
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -10,12 +16,36 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final _firstnameController = TextEditingController();
+  final _lastnameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
   double screenHeight = 0;
   double screenWidth = 0;
 
   String birthDate = 'Date of Birth';
 
-  Color primary = Color.fromRGBO(12, 45, 92, 1);
+  Color primary = const Color.fromRGBO(12, 45, 92, 1);
+
+  void pickUploadProfilePic() async {
+    final image = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxHeight: 512,
+        maxWidth: 512,
+        imageQuality: 98);
+
+    Reference ref = FirebaseStorage.instance
+        .ref()
+        .child("${Users.id.toLowerCase()}_profilepic.jpg");
+    await ref.putFile(File(image!.path));
+  ref.getDownloadURL().then((value) {
+    setState(() {
+      Users.profilePiclink = value;
+    });
+  });
+
+  }
+
   @override
   Widget build(BuildContext context) {
     screenHeight = MediaQuery.of(context).size.height;
@@ -23,18 +53,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       body: Column(
         children: [
-          Container(
-            margin: EdgeInsets.only(top: 80, bottom: 24),
-            height: 120,
-            width: 120,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20), color: primary),
-            child: Center(
-              child: Icon(
-                Icons.person,
-                color: Colors.white,
-                size: 80,
+          GestureDetector(
+            onTap: (){
+              pickUploadProfilePic();
+            },
+            child: Container(
+              margin: EdgeInsets.only(top: 80, bottom: 24),
+              height: 120,
+              width: 120,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20), color: primary),
+              child: Center(
+                child: Users.profilePiclink == ""  ? const Icon(
+                  Icons.person,
+                  color: Colors.white,
+                  size: 80,
+                ) : Image.network(Users.profilePiclink),
               ),
             ),
           ),
@@ -52,13 +87,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(
             height: 24,
           ),
-          textField("First Name", "First Name"),
-          textField("Last Name", "Last Name"),
- 
+          textField("First Name", "First Name", _firstnameController),
+          textField("Last Name", "Last Name", _lastnameController),
+          textField("Phone", "Phone", _phoneController),
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             alignment: Alignment.centerLeft,
-            child: Text(
+            child: const Text(
               'Date of Birth',
               style: TextStyle(
                 color: Colors.black54,
@@ -83,7 +118,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           textButtonTheme: TextButtonThemeData(
                             style: TextButton.styleFrom(primary: primary),
                           ),
-                          textTheme: TextTheme(
+                          textTheme: const TextTheme(
                             headline4: TextStyle(fontFamily: 'NexaBold'),
                             overline: TextStyle(fontFamily: 'NexaBold'),
                             button: TextStyle(fontFamily: 'NexaBold'),
@@ -97,7 +132,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               });
             },
             child: Container(
-              margin: EdgeInsets.symmetric(horizontal: 20),
+              margin: const EdgeInsets.symmetric(horizontal: 20),
               height: kToolbarHeight,
               width: screenWidth,
               decoration: BoxDecoration(
@@ -106,14 +141,75 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               child: Container(
                 padding: const EdgeInsets.only(left: 11, top: 10),
-                margin: EdgeInsets.only(bottom: 12),
+                margin: const EdgeInsets.only(bottom: 12),
                 alignment: Alignment.centerLeft,
                 child: Text(
                   birthDate,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.black54,
                     fontFamily: "NexaBold",
                     fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(
+            height: 24,
+          ),
+          GestureDetector(
+            onTap: () async {
+              String firstName = _firstnameController.text;
+              String lastName = _lastnameController.text;
+              String phone = _phoneController.text;
+              String address = _addressController.text;
+
+              if (Users.conEdit) {
+                if (firstName.isEmpty) {
+                  showSnackBar('Please enter your firstname');
+                } else if (lastName.isEmpty) {
+                  showSnackBar('Please enter your lastname');
+                } else if (phone.isEmpty) {
+                  showSnackBar('Please enter your phone');
+                } else if (birthDate.isEmpty) {
+                  showSnackBar('Please enter your birthdate');
+                } else {
+                  await FirebaseFirestore.instance
+                      .collection('Employee')
+                      .doc(Users.id)
+                      .update({
+                    'firstName': firstName,
+                    'lastName': lastName,
+                    'birthDate': birthDate,
+                    'phone': phone,
+                    'conEdit': false
+                  });
+                }
+              } else {
+                showSnackBar('Dont Have Edit anythings');
+              }
+            },
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 20),
+              height: kToolbarHeight,
+              width: screenWidth,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.black54),
+                color: primary,
+              ),
+              child: Container(
+                padding: const EdgeInsets.only(left: 11, top: 10),
+                margin: const EdgeInsets.only(bottom: 12),
+                alignment: Alignment.centerLeft,
+                child: const Center(
+                  child: Text(
+                    'Save Data',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontFamily: "NexaBold",
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),
@@ -124,7 +220,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget textField(String hint, String title) {
+  Widget textField(
+      String hint, String title, TextEditingController controller) {
     return Column(
       children: [
         Container(
@@ -142,6 +239,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: EdgeInsets.symmetric(horizontal: 20),
           margin: EdgeInsets.only(bottom: 12),
           child: TextFormField(
+            controller: controller,
             cursorColor: Colors.black54,
             maxLines: 1,
             decoration: InputDecoration(
@@ -165,6 +263,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  void showSnackBar(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        content: Text(text),
+      ),
     );
   }
 }

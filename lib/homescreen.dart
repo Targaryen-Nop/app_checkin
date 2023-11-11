@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:checkin_app/calendarscreen.dart';
 import 'package:checkin_app/checkinscreen.dart';
+import 'package:checkin_app/checkinscreen2.dart';
 import 'package:checkin_app/model/user.dart';
 import 'package:checkin_app/profilescreen.dart';
 import 'package:checkin_app/services/location_service.dart';
@@ -7,23 +10,50 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
 
 class HomeScreeen extends StatefulWidget {
   const HomeScreeen({super.key});
 
   @override
-  State<HomeScreeen> createState() => _HomeScreeenState();
+  State<HomeScreeen> createState() => HomeScreeenState();
 }
 
-class _HomeScreeenState extends State<HomeScreeen> {
+class HomeScreeenState extends State<HomeScreeen> {
   late SharedPreferences sharedPreferences;
   @override
   void initState() {
     super.initState();
+  
+    _getCredentials();
     _startLocationService();
-    getId();
+    // _getCurrentLocation().then((value) {
+    //   setState(() {
+    //     Users.lat = value.latitude;
+    //     Users.long = value.longitude;
+    //   });
+    // });
+   
+   
   }
 
+
+  void _getCredentials() async {
+    DocumentSnapshot doc = await FirebaseFirestore.instance
+        .collection('Employee')
+        .doc('XWGUEbtxAOXQg2MU73hu')
+        .get();
+
+    // setState(() {
+    //   Users.conEdit = doc['conEdit'];
+    //   Users.firstName = doc['firstName'];
+    //   Users.lastName = doc['lastName'];
+    //   Users.phone = doc['phone'];
+    //   Users.birthDate = doc['birthDate'];
+    // });
+  }
+
+ 
   void _startLocationService() async {
     LocationService().initialize();
     LocationService().getLatetude().then((value) {
@@ -38,20 +68,28 @@ class _HomeScreeenState extends State<HomeScreeen> {
     });
   }
 
-  void getId() async {
-    QuerySnapshot snap = await FirebaseFirestore.instance
-        .collection("Employee")
-        .where('username', isEqualTo: Users.username)
-        .get();
+  Future<Position> _getCurrentLocation() async {
+    bool serviceEnable = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnable) {
+      return Future.error('Location service are Disable');
+    }
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Location permission are denied');
+      }
+    }
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error('Location permissino are denied, we cannot request');
+    }
 
-    setState(() {
-      Users.id = snap.docs[0].id;
-    });
+    return Geolocator.getCurrentPosition();
   }
 
   double screenHeight = 0;
   double screenWidth = 0;
-  Color primary = Color.fromRGBO(12, 45, 92, 1);
+  Color primary = const Color.fromRGBO(12, 45, 92, 1);
   int currerntIndex = 1;
 
   List<IconData> navigationIcons = [
@@ -59,6 +97,12 @@ class _HomeScreeenState extends State<HomeScreeen> {
     FontAwesomeIcons.check,
     FontAwesomeIcons.user,
   ];
+
+  void changePage(int newIndex) {
+    setState(() {
+      currerntIndex = newIndex;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,6 +115,7 @@ class _HomeScreeenState extends State<HomeScreeen> {
           new CalendarScreen(),
           new CheckinScreen(),
           new ProfileScreen(),
+          new CheckinScreen2(),
         ],
       ),
       bottomNavigationBar: Container(
@@ -89,7 +134,7 @@ class _HomeScreeenState extends State<HomeScreeen> {
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.all(Radius.circular(40)),
+          borderRadius: const BorderRadius.all(Radius.circular(40)),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -98,9 +143,7 @@ class _HomeScreeenState extends State<HomeScreeen> {
                 Expanded(
                   child: GestureDetector(
                     onTap: () {
-                      setState(() {
-                        currerntIndex = i;
-                      });
+                      changePage(i);
                     },
                     child: Container(
                       height: screenHeight,
@@ -140,5 +183,11 @@ class _HomeScreeenState extends State<HomeScreeen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    // Perform cleanup when the widget is removed from the tree.
+    super.dispose();
   }
 }

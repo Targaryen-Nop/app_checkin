@@ -1,9 +1,10 @@
 import 'package:checkin_app/homescreen.dart';
+import 'package:checkin_app/model/user.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,12 +17,43 @@ class _LoginScreenState extends State<LoginScreen> {
   double screenHeight = 0;
   double screenWidth = 0;
 
-  Color primary = Color.fromRGBO(12, 45, 92, 1);
+  Color primary = const Color.fromRGBO(12, 45, 92, 1);
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   late SharedPreferences sharedPreferences;
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    _getCurrentLocation().then((value) {
+      setState(() {
+        Users.lat = value.latitude;
+        Users.long = value.longitude;
+      });
+    });
+  }
+
+  Future<Position> _getCurrentLocation() async {
+    bool serviceEnable = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnable) {
+      return Future.error('Location service are Disable');
+    }
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Location permission are denied');
+      }
+    }
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error('Location permissino are denied, we cannot request');
+    }
+
+    return Geolocator.getCurrentPosition();
+  }
 
   @override
   void dispose() {
@@ -49,11 +81,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: screenWidth,
                   decoration: BoxDecoration(
                       color: primary,
-                      borderRadius:
-                          BorderRadius.only(bottomRight: Radius.circular(55))),
+                      borderRadius: const BorderRadius.only(
+                          bottomRight: Radius.circular(55))),
                   child: Center(
                       child: Image(
-                    image: AssetImage('assets/images/logo.png'),
+                    image: const AssetImage('assets/images/logo.png'),
                     height: screenHeight / 5,
                   )),
                 ),
@@ -80,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 fieldTitle('Password'),
                 customField('Password', _passwordController, false),
                 Container(
-                  margin: EdgeInsets.only(top: 32),
+                  margin: const EdgeInsets.only(top: 32),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 25.0),
                     child: GestureDetector(
@@ -101,21 +133,34 @@ class _LoginScreenState extends State<LoginScreen> {
                               .collection("Employee")
                               .where('username', isEqualTo: email)
                               .get();
-                            
+
                           try {
                             if (password == sanp.docs[0]['password']) {
-                        
+                              QuerySnapshot snap2 = await FirebaseFirestore
+                                  .instance
+                                  .collection("Employee")
+                                  .where('username', isEqualTo: email)
+                                  .get();
+                              setState(() {
+                                Users.username = snap2.docs[0]['username'];
+                                Users.id = snap2.docs[0].id;
+                              });
+
                               sharedPreferences =
                                   await SharedPreferences.getInstance();
+                              sharedPreferences.setString(
+                                  'employeeID', snap2.docs[0].id);
                               sharedPreferences
                                   .setString('employeeUser', email)
                                   .then((_) {
                                 Navigator.pushReplacement(
                                     context,
                                     MaterialPageRoute(
-                                        builder: (context) => HomeScreeen()));
+                                        builder: (context) =>
+                                            const HomeScreeen()));
                               });
                             } else {
+                              // ignore: use_build_context_synchronously
                               ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                       content: Text("Paswword in wrong !")));

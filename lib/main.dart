@@ -1,13 +1,18 @@
+import 'package:checkin_app/checkinscreen.dart';
+import 'package:checkin_app/googlemap.dart';
 import 'package:checkin_app/homescreen.dart';
 import 'package:checkin_app/loginscreen.dart';
 import 'package:checkin_app/menuscreen.dart';
 import 'package:checkin_app/model/user.dart';
-
+import 'package:checkin_app/testlocation.dart';
+import 'package:checkin_app/services/location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:month_year_picker/month_year_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,14 +52,40 @@ class _AuthCheckState extends State<AuthCheck> {
   void initState() {
     super.initState();
     _getCurrentUser();
+  
   }
+
+  Future<Position> _getCurrentLocation() async {
+    bool serviceEnable = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnable) {
+      return Future.error('Location service are Disable');
+    }
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Location permission are denied');
+      }
+    }
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error('Location permissino are denied, we cannot request');
+    }
+    return Geolocator.getCurrentPosition();
+  }
+
 
   void _getCurrentUser() async {
     sharedPreferences = await SharedPreferences.getInstance();
     try {
       if (sharedPreferences.getString('employeeUser') != '') {
+        QuerySnapshot snap = await FirebaseFirestore.instance
+            .collection("Employee")
+            .where('username', isEqualTo: sharedPreferences.getString('employeeUser')!)
+            .get();
         setState(() {
+
           Users.username = sharedPreferences.getString('employeeUser')!;
+          Users.id = sharedPreferences.getString('employeeID')!;
           userAvailable = true;
         });
       }
